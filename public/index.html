@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Tracker</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; color: #1b1f24; }
+    h1 { margin-bottom: .25rem; }
+    #badge { font-size: .8rem; color: #667; margin-bottom: 1.5rem; }
+    form { display: flex; gap: .5rem; margin-bottom: 1rem; }
+    input[type=text] { flex: 1; padding: .5rem; font-size: 1rem; }
+    button { padding: .5rem .9rem; cursor: pointer; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; align-items: center; gap: .6rem; padding: .5rem 0; border-bottom: 1px solid #e3e6ea; }
+    li.done span { text-decoration: line-through; color: #889; }
+    li span { flex: 1; }
+  </style>
+</head>
+<body>
+  <h1>Task Tracker</h1>
+  <div id="badge"></div>
+  <form id="add">
+    <input type="text" id="title" placeholder="New task" required>
+    <button>Add</button>
+  </form>
+  <ul id="list"></ul>
+  <script>
+    const list = document.getElementById("list");
+    const api = (url, opts) => fetch(url, { headers: { "Content-Type": "application/json" }, ...opts });
+
+    async function load() {
+      const tasks = await (await api("/api/tasks")).json();
+      list.innerHTML = "";
+      for (const t of tasks) {
+        const li = document.createElement("li");
+        if (t.done) li.className = "done";
+        const cb = document.createElement("input");
+        cb.type = "checkbox"; cb.checked = t.done;
+        cb.onchange = async () => { await api("/api/tasks/" + t.id, { method: "PUT", body: JSON.stringify({ done: cb.checked }) }); load(); };
+        const span = document.createElement("span");
+        span.textContent = t.title;
+        const del = document.createElement("button");
+        del.textContent = "Delete";
+        del.onclick = async () => { await api("/api/tasks/" + t.id, { method: "DELETE" }); load(); };
+        li.append(cb, span, del);
+        list.append(li);
+      }
+    }
+
+    document.getElementById("add").onsubmit = async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("title");
+      await api("/api/tasks", { method: "POST", body: JSON.stringify({ title: input.value }) });
+      input.value = "";
+      load();
+    };
+
+    api("/health").then((r) => r.json()).then((h) => { document.getElementById("badge").textContent = "storage: " + h.storage; });
+    load();
+  </script>
+</body>
+</html>

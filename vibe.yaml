@@ -1,0 +1,44 @@
+# UNVALIDATED: adapted from the design-doc example, not checked against the platform.
+# Per the design doc, the backend may not require this file at intake.
+name: task-tracker                    # must be unique
+
+workloads:
+  web:
+    artifact:
+      source:
+        repo: github.com/radu-dragon/task-tracker
+        ref: main
+        path: .
+    ports:
+      http:
+        protocol: http
+        expose: public
+    size: small
+    health:
+      path: /health                   # this app serves /health (not /healthz)
+    env:
+      LOG_LEVEL: info
+      # TODO: the app reads DATABASE_URL. Per the design doc, db connection details are
+      # injected into consumers as secrets, but the secret name isn't documented.
+      # Confirm the scoped name (and whether it maps to DATABASE_URL), then add e.g.:
+      # DATABASE_URL:
+      #   secret: <scoped-secret-name>
+    uses: [db]
+
+  db:
+    kind: database
+    database:
+      engine: postgres
+      version: "16"
+    size: small
+
+routes:
+  site:
+    match: /
+    to: web.http
+
+environments:
+  preview:
+    workloads:
+      web:
+        size: nano
