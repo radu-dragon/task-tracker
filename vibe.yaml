@@ -18,11 +18,14 @@ workloads:
       path: /health                   # this app serves /health (not /healthz)
     env:
       LOG_LEVEL: info
-      # TODO: the app reads DATABASE_URL. Per the design doc, db connection details are
-      # injected into consumers as secrets, but the secret name isn't documented.
-      # Confirm the scoped name (and whether it maps to DATABASE_URL), then add e.g.:
+      # TODO: db connection details are injected as secrets, but the names aren't documented.
+      # The app accepts DATABASE_URL or PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE and logs the
+      # names of DB-related env vars at startup. After the first deploy, check the logs, then if
+      # needed map explicitly (only `project.` scope is confirmed):
       # DATABASE_URL:
-      #   secret: <scoped-secret-name>
+      #   secret: project.<name>
+      # Alternative: create a per-app vibe-secret (POST /api/v2/vibe-secrets, key DATABASE_URL);
+      # it is injected as an env var by key. Keys starting VIBE_ or HARNESS_ are reserved.
     uses: [db]
 
   db:

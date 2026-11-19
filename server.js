@@ -10,13 +10,25 @@ const PORT = process.env.PORT || 3000;
 
 // Connection string comes from the environment (set as a secret/env var on the platform).
 // If it is missing, fall back to in-memory storage so the app still boots and the demo doesn't die.
+// The platform's injected DB secret names are not documented yet, so accept either a single
+// DATABASE_URL or the standard libpq variables (PGHOST, PGPORT, PGUSER, PGPASSWORD, PGDATABASE),
+// which pg reads natively when no connectionString is passed.
 const DATABASE_URL = process.env.DATABASE_URL;
-const pool = DATABASE_URL
-  ? new Pool({
-      connectionString: DATABASE_URL,
-      ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: false } : undefined,
-    })
-  : null;
+const hasPgVars = Boolean(process.env.PGHOST);
+
+// Log the NAMES (never values) of DB-looking env vars, to discover what the platform injects.
+const dbVarNames = Object.keys(process.env)
+  .filter((k) => /DATABASE|POSTGRES|^PG|^DB_|^DB$/i.test(k))
+  .sort();
+console.log("db-related env var names:", dbVarNames.length ? dbVarNames.join(", ") : "(none)");
+
+const pool =
+  DATABASE_URL || hasPgVars
+    ? new Pool({
+        ...(DATABASE_URL ? { connectionString: DATABASE_URL } : {}),
+        ssl: process.env.PGSSL === "true" ? { rejectUnauthorized: false } : undefined,
+      })
+    : null;
 
 let memTasks = [];
 let memId = 1;
